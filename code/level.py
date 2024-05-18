@@ -8,6 +8,7 @@ class Level:
 
         # Groups
         self.all_sprites = pygame.sprite.Group()
+        self.collision_sprites = pygame.sprite.Group()  # This group contains all collidable sprites
         self.setup(tmx_map)
 
     def setup(self, tmx_map):
@@ -15,14 +16,14 @@ class Level:
 
         # x, y - is not pixel positions, it is positions in a grid, because of that we have * TILE_SIZE
         for x, y, surf in tmx_map.get_layer_by_name("Terrain").tiles():
-            Sprite((x * TILE_SIZE,y * TILE_SIZE), surf, self.all_sprites)
+            Sprite((x * TILE_SIZE,y * TILE_SIZE), surf, (self.all_sprites, self.collision_sprites))     # We have tuple of sprites
         # print(tmx_map)
 
         for obj in tmx_map.get_layer_by_name('Objects'):
             #print(obj)
             if obj.name == "player":
                 # With obj we gets original positions do not need to multiply with TILE_SIZE
-                Player((obj.x, obj.y), self.all_sprites)
+                Player((obj.x, obj.y), self.all_sprites, self.collision_sprites) # THE PLAYER ONLY ACCESS TO collision_sprites it's not inside it
                 # print(obj.x)
                 # print(obj.y)
             
