@@ -3,10 +3,15 @@ from timer import Timer
 from os.path import join    # Gives relative paths to specific os
 
 class Player(pygame.sprite.Sprite):
-    def __init__(self, pos, groups, collision_sprites, semi_collision_sprites):
+    def __init__(self, pos, groups, collision_sprites, semi_collision_sprites, frames):
+        # general setup
         super().__init__(groups)
-        self.image = pygame.image.load(join('graphics','player','idle','0.png'))
         self.z = Z_LAYERS['main']
+        
+        # image
+        self.frames, self.frame_index = frames, 0
+        self.state, self.facing_right = 'idle', True
+        self.image = self.frames[self.state][self.frame_index]
 
         # Rects
         self.rect = self.image.get_frect(topleft = pos)
@@ -21,6 +26,7 @@ class Player(pygame.sprite.Sprite):
         self.gravity = 700 # Because fall speed is not the same with speed of x, so we created another variable
         self.jump = False
         self.jump_heigt = 500
+        self.attacking = False
 
         #---------------------------
         # Collision
@@ -36,7 +42,8 @@ class Player(pygame.sprite.Sprite):
         self.timers= {
             "wall jump" : Timer(350),
             "wall slide block" : Timer(250),
-            "platform skip" : Timer(100)    # Experiment with all of this
+            "platform skip" : Timer(100),    # Experiment with all of this
+            "attack block": Timer(500)
         }
 
     def input(self):
@@ -47,11 +54,18 @@ class Player(pygame.sprite.Sprite):
             if keys[pygame.K_RIGHT]:
                 # print("Right")
                 input_vector.x += 1
+                self.facing_right = True
+
             if keys[pygame.K_LEFT]:
                 # print("Left")
+                self.facing_right = False
+
                 input_vector.x -= 1
             if keys[pygame.K_DOWN]:
                 self.timers["platform skip"].activate()
+
+            if keys[pygame.K_x]:
+                self.attack()
             
             # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
             self.direction.x = input_vector.normalize().x if input_vector else input_vector.x  # normalize() -> We want to be sure that length is ALWAYS 1
@@ -61,7 +75,13 @@ class Player(pygame.sprite.Sprite):
         if keys[pygame.K_SPACE]:
             # self.direction.y = -100 -> This can be feature :)
             self.jump = True
-            
+    
+    def attack(self):
+        if not self.timers['attack block'].active:
+            self.attacking = True
+            self.frame_index = 0
+            self.timers["attack block"].activate()
+
 
     def move(self, dt):
         # horizontal
@@ -180,12 +200,42 @@ class Player(pygame.sprite.Sprite):
         for timer in self.timers.values():
             timer.update()
 
+    def animate(self, dt):
+        self.frame_index += ANIMATION_SPEED * dt
+        if self.state == 'attack' and self.frame_index >= len(self.frames[self.state]):
+            self.state = 'idle'
+
+        self.image = self.frames[self.state][int(self.frame_index % len(self.frames[self.state]))]
+        self.image = self.image if self.facing_right else pygame.transform.flip(self.image, True, False)
+
+        if self.attacking and self.frame_index > len(self.frames[self.state]):
+            self.attacking = False
+
+    def get_state(self):
+        if self.on_surface['floor']:
+            if self.attack:
+                self.state = 'attack'
+            else:
+                self.state = 'idle' if self.direction.x == 0 else 'run'
+        else:
+            if self.attacking:
+                self.state = 'air_attack'
+            else:
+                if any((self.on_surface['left'], self.on_surface['right'])):
+                    self.state = 'wall'
+                else:
+                    self.state = 'jump' if self.direction.y < 0 else 'fall'
+
     # Override
     def update(self, dt):
         self.old_rect = self.hitbox_rect.copy()    # Our old position before collision, to now from which side is collision, where is player before
         self.update_timers()
+
         self.input()
         self.move(dt)
         self.platform_move(dt)
         self.check_contact()
+
+        self.get_state()
+        self.animate(dt)
         # print(self.timers["wall jump"].active)
