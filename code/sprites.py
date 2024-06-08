@@ -1,5 +1,6 @@
 from settings import *
 from math import sin,cos, radians
+from random import randint
 
 class Sprite(pygame.sprite.Sprite):
     def __init__(self, pos, surf = pygame.Surface((TILE_SIZE, TILE_SIZE)), groups = None, z = Z_LAYERS['main']): 
@@ -24,10 +25,23 @@ class AnimatedSprite(Sprite):
         self.animate(dt)
 
 class Item(AnimatedSprite):
-    def __init__(self, item_type, pos, frames, groups):
+    def __init__(self, item_type, pos, frames, groups, data):
         super().__init__(pos, frames, groups)
         self.rect.center = pos
         self.item_type = item_type
+        self.data = data
+
+    def activate(self):
+        if self.item_type == 'gold':
+            self.data.coins += 5
+        if self.item_type == 'silver':
+            self.data.coins += 1
+        if self.item_type == 'diamond':
+            self.data.coins += 20
+        if self.item_type == 'skull':
+            self.data.coins += 50
+        if self.item_type == 'potion':
+            self.data.health += 1
 
 class ParticleEffectSprite(AnimatedSprite):
     def __init__(self, pos, frames, groups):
@@ -124,3 +138,16 @@ class Spike(Sprite):
         y = self.center[1] +  sin(radians(self.angle)) * self.radius
         x = self.center[0] + cos(radians(self.angle)) * self.radius
         self.rect.center = (x,y)
+
+class Cloud(Sprite):
+    def __init__(self, pos, surf, groups, z = Z_LAYERS['clouds']):
+        super().__init__(pos, surf, groups, z)
+        self.speed = randint(50, 120)
+        self.direction = -1
+        self.rect.midbottom = pos
+
+    def update(self, dt):
+        self.rect.x += self.direction * self.speed * dt
+
+        if self.rect.right <= 0:
+            self.kill()

@@ -1,12 +1,14 @@
 from settings import *
 from timer import Timer
 from os.path import join    # Gives relative paths to specific os
+from math import sin
 
 class Player(pygame.sprite.Sprite):
-    def __init__(self, pos, groups, collision_sprites, semi_collision_sprites, frames):
+    def __init__(self, pos, groups, collision_sprites, semi_collision_sprites, frames, data):
         # general setup
         super().__init__(groups)
         self.z = Z_LAYERS['main']
+        self.data = data
         
         # image
         self.frames, self.frame_index = frames, 0
@@ -32,7 +34,7 @@ class Player(pygame.sprite.Sprite):
         # Collision
         self.collision_sprites = collision_sprites
         self.semi_collision_sprites = semi_collision_sprites
-        # print(self.collision_sprites) -> To see how big is our group of sprites
+    
 
         # We want to know is player on surface, and if he is, then he can again jump
         self.on_surface = {"floor" : False, "left" : False, "right": False}
@@ -43,7 +45,8 @@ class Player(pygame.sprite.Sprite):
             "wall jump" : Timer(350),
             "wall slide block" : Timer(250),
             "platform skip" : Timer(100),    # Experiment with all of this
-            "attack block": Timer(500)
+            "attack block": Timer(500),
+            'hit': Timer(400),
         }
 
     def input(self):
@@ -52,12 +55,10 @@ class Player(pygame.sprite.Sprite):
 
         if not self.timers["wall jump"].active:
             if keys[pygame.K_RIGHT]:
-                # print("Right")
                 input_vector.x += 1
                 self.facing_right = True
 
             if keys[pygame.K_LEFT]:
-                # print("Left")
                 self.facing_right = False
 
                 input_vector.x -= 1
@@ -226,6 +227,20 @@ class Player(pygame.sprite.Sprite):
                 else:
                     self.state = 'jump' if self.direction.y < 0 else 'fall'
 
+    def get_damage(self):
+        if not self.timers['hit'].active:
+            self.data.health -= 1
+            self.timers['hit'].activate()
+
+    def flicker(self):  # Indicate that player current gets damage
+        if self.timers['hit'].active and sin(pygame.time.get_ticks() * 150) >= 0:
+            white_mask = pygame.mask.from_surface(self.image) #every pixel transparent will be black, and every that not will be white
+            white_surf = white_mask.to_surface()
+
+            # Important
+            white_surf.set_colorkey('black')    # To remove black color, to be transparent
+            self.image = white_surf
+
     # Override
     def update(self, dt):
         self.old_rect = self.hitbox_rect.copy()    # Our old position before collision, to now from which side is collision, where is player before
@@ -238,4 +253,4 @@ class Player(pygame.sprite.Sprite):
 
         self.get_state()
         self.animate(dt)
-        # print(self.timers["wall jump"].active)
+        self.flicker()

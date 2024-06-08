@@ -18,7 +18,7 @@ def import_folder(*path):   # Imports all images inside folder in place them in 
     return frames
 
 def import_folder_dict(*path): #More or less same as import_folder but we here working with dictionary
-    frame_dict = []
+    frame_dict = {}
     for folder_path, _, image_names in walk(join(*path)):
         for image_name in image_names:
             full_path = join(folder_path, image_name)
